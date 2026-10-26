@@ -9,6 +9,7 @@
           --shadow: none; }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }  /* class display rules (e.g. .placeholder flex) must not override hidden */
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; }
 h1, h2 { margin: 0; letter-spacing: -.01em; }
 h1 { font-size: 21px; }

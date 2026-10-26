@@ -1,3 +1,5 @@
-// Base URL of the inference API. Empty when the dashboard is served by server.py itself;
-// set it to the backend URL (for example a Hugging Face Space) when the dashboard is hosted on Vercel.
-window.PVC_API_BASE = "";
+// Base URL of the inference API. Served by server.py itself (local PC or Hugging Face Space): same origin.
+// Served by Vercel (static dashboard only): the Hugging Face Space that runs the model.
+window.PVC_API_BASE = location.hostname.endsWith(".vercel.app")
+  ? "https://zafiranurkamila-pvc-origin-monitor.hf.space"
+  : "";

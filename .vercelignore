@@ -1,0 +1,4 @@
+# Vercel hosts only the dashboard (static/); the Python inference server runs on Hugging Face Spaces.
+*.py
+requirements.txt
+deploy/
