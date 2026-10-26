@@ -45,6 +45,7 @@ MODEL_PATH = Path(os.environ.get("PVC_MODEL", RESEARCH_REPO / "results" / "model
 FS = config.SAMPLING_RATE_HZ
 REF = config.LEADS.index(config.RPEAK_DETECTION_LEAD)
 LABELS = ("RVOT", "LVOT")
+SHOW_LEAD = "V1"  # lead shown in the representation view of the dashboard
 torch.set_num_threads(max(1, (os.cpu_count() or 2) // 2))
 
 
@@ -119,6 +120,18 @@ class PVCLocalizer:
         patient_margin = float(margin.mean())
         p_lvot = float(1 / (1 + np.exp(-patient_margin)))
         label = LABELS[int(patient_margin > 0)]
+        # what the two branches see: PSD and CWT scalogram of lead V1, averaged over the PVC beats
+        v1 = config.LEADS.index(SHOW_LEAD)
+        n_bins = psd.shape[1] // len(config.LEADS)
+        edges = np.linspace(config.FEATURE_FMIN_HZ, config.FEATURE_FMAX_HZ, n_bins + 1)
+        result["representations"] = {
+            "lead": SHOW_LEAD,
+            "psd_hz": np.round((edges[:-1] + edges[1:]) / 2, 2).tolist(),
+            "psd_log10": np.round(psd.reshape(len(psd), len(config.LEADS), n_bins)[:, v1].mean(0), 3).tolist(),
+            "cwt_hz": np.round(np.geomspace(config.CWT_FMIN_HZ, config.FEATURE_FMAX_HZ, cwt.shape[2]), 2).tolist(),
+            "cwt_ms": [-config.BEAT_PRE_MS, config.BEAT_POST_MS],
+            "cwt": np.round(cwt[:, v1].mean(0), 3).tolist(),
+        }
         result.update(
             status="ok", prediction=label, p_lvot=round(p_lvot, 4),
             confidence=round(p_lvot if label == "LVOT" else 1 - p_lvot, 4),

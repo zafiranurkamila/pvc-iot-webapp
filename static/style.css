@@ -37,6 +37,10 @@ button:disabled { opacity: .6; cursor: progress; }
 .bar span { position: absolute; top: -4px; width: 3px; height: 18px; background: var(--ink); border-radius: 2px; transform: translateX(-50%); }
 .barlab { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
 canvas { width: 100%; display: block; }
+.reps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.reps figure { margin: 0; min-width: 0; }
+.reps figcaption { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+@media (max-width: 760px) { .reps { grid-template-columns: 1fr; } }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 th { color: var(--muted); font-weight: 600; font-size: 12px; }

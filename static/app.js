@@ -54,6 +54,66 @@ function show(r) {
   $("timing").innerHTML = Object.entries(r.timing_ms).map(([k, v]) =>
     `<tr><td>${STAGES[k] || k}</td><td class="num">${v.toFixed(1)} ms</td></tr>`).join("");
   plot(r);
+  $("repcard").hidden = !ok;
+  if (ok) {
+    $("replab").textContent = `lead ${r.representations.lead}, mean of the ${r.n_pvc_beats} PVC beats`;
+    plotPSD(r.representations);
+    plotCWT(r.representations);
+  }
+}
+
+function canvas2d(id, H) {
+  const c = $(id), dpr = window.devicePixelRatio || 1, W = c.clientWidth;
+  c.width = W * dpr; c.height = H * dpr;
+  const g = c.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+  const css = getComputedStyle(document.documentElement);
+  return { g, W, H, col: (n) => css.getPropertyValue(n).trim() };
+}
+
+function axes(g, col, L, T, R, B, xlab, ylab) {
+  g.strokeStyle = col("--line"); g.lineWidth = 1; g.strokeRect(L, T, R - L, B - T);
+  g.fillStyle = col("--muted"); g.font = "11px Segoe UI, sans-serif";
+  g.fillText(xlab, (L + R) / 2 - g.measureText(xlab).width / 2, B + 28);
+  g.save(); g.translate(12, (T + B) / 2); g.rotate(-Math.PI / 2); g.fillText(ylab, -g.measureText(ylab).width / 2, 0); g.restore();
+}
+
+function plotPSD(rep) {
+  const { g, W, H, col } = canvas2d("psd", 200), L = 44, T = 8, R = W - 8, B = H - 34;
+  const f = rep.psd_hz, p = rep.psd_log10, lo = Math.min(...p), hi = Math.max(...p);
+  const x = (v) => L + (v / 60) * (R - L), y = (v) => B - ((v - lo) / (hi - lo || 1)) * (B - T);
+  axes(g, col, L, T, R, B, "Frequency (Hz)", "log10 power");
+  g.strokeStyle = col("--accent"); g.lineWidth = 2; g.beginPath();
+  f.forEach((v, i) => (i ? g.lineTo(x(v), y(p[i])) : g.moveTo(x(v), y(p[i]))));
+  g.stroke();
+  g.fillStyle = col("--muted");
+  for (const t of [0, 10, 20, 30, 40, 50, 60]) g.fillText(t, x(t) - 4, B + 13);
+  for (const v of [lo, hi]) g.fillText(v.toFixed(1), 18, y(v) + 4);
+}
+
+function magma(t) {  // compact perceptual colormap (black -> purple -> orange -> pale yellow)
+  const s = [[0, 0, 4], [81, 18, 124], [183, 55, 121], [252, 137, 97], [252, 253, 191]];
+  const u = Math.min(0.9999, Math.max(0, t)) * (s.length - 1), i = Math.floor(u), k = u - i;
+  return s[i].map((a, j) => Math.round(a + (s[i + 1][j] - a) * k));
+}
+
+function plotCWT(rep) {
+  const { g, W, H, col } = canvas2d("cwt", 200), L = 44, T = 8, R = W - 8, B = H - 34;
+  const m = rep.cwt, nf = m.length, nt = m[0].length, flat = m.flat(), lo = Math.min(...flat), hi = Math.max(...flat);
+  const img = g.createImageData(nt, nf);
+  for (let fi = 0; fi < nf; fi++) for (let ti = 0; ti < nt; ti++) {
+    const [r, gg, b] = magma((m[fi][ti] - lo) / (hi - lo || 1)), o = 4 * ((nf - 1 - fi) * nt + ti);  // high freq on top
+    img.data[o] = r; img.data[o + 1] = gg; img.data[o + 2] = b; img.data[o + 3] = 255;
+  }
+  const off = document.createElement("canvas"); off.width = nt; off.height = nf;
+  off.getContext("2d").putImageData(img, 0, 0);
+  g.imageSmoothingEnabled = true; g.drawImage(off, L, T, R - L, B - T);
+  axes(g, col, L, T, R, B, "Time from R peak (ms)", "Frequency (Hz)");
+  const [t0, t1] = rep.cwt_ms, xt = (t) => L + ((t - t0) / (t1 - t0)) * (R - L);
+  g.strokeStyle = "#ffffff"; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(xt(0), T); g.lineTo(xt(0), B); g.stroke(); g.setLineDash([]);
+  g.fillStyle = col("--muted");
+  for (const t of [-300, -150, 0, 150, 300, 500]) g.fillText(t, xt(t) - 8, B + 13);
+  const fmin = rep.cwt_hz[0], fmax = rep.cwt_hz[nf - 1], yf = (f) => B - (Math.log(f / fmin) / Math.log(fmax / fmin)) * (B - T);
+  for (const f of [2, 5, 10, 20, 60]) g.fillText(f, 22, yf(f) + 4);
 }
 
 function plot(r) {

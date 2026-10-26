@@ -52,6 +52,14 @@
     <canvas id="ecg" height="220"></canvas>
   </section>
 
+  <section class="card wide" id="repcard" hidden>
+    <h2>Model input representations <small id="replab">mean of the PVC beats</small></h2>
+    <div class="reps">
+      <figure><figcaption>Power spectral density (PSD branch, 1D CNN)</figcaption><canvas id="psd" height="200"></canvas></figure>
+      <figure><figcaption>CWT scalogram (wavelet branch, 2D CNN)</figcaption><canvas id="cwt" height="200"></canvas></figure>
+    </div>
+  </section>
+
   <section class="card" id="beatcard" hidden>
     <h2>Beat-level output</h2>
     <table><thead><tr><th>Beat</th><th>Time (s)</th><th>QRS (ms)</th><th>P(LVOT)</th><th>Vote</th></tr></thead>
