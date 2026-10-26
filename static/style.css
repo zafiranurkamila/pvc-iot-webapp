@@ -64,6 +64,11 @@ button:disabled { opacity: .6; cursor: progress; }
 .tiles span { display: block; font-size: 12px; color: var(--muted); }
 .tiles b { display: block; font-size: 16px; margin-top: 2px; overflow-wrap: anywhere; }
 
+.votes { margin-top: 16px; }
+.vhead { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.vbar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--soft); border: 1px solid var(--line); }
+.vbar .r { background: var(--rvot); } .vbar .l { background: var(--lvot); }
+.rule { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
 .legend { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
 .legend .tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid var(--lvot); }
 .legend .circ { width: 8px; height: 8px; border-radius: 50%; background: var(--rvot); margin-left: 10px; }

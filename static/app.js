@@ -57,6 +57,10 @@ function show(r) {
   $("total").textContent = `${(r.timing_ms.total ?? r.request_ms).toFixed(0)} ms`;
   $("pbar").style.left = ok ? `${r.p_lvot * 100}%` : "50%";
   $("plvot").textContent = ok ? `LVOT score ${prob(r.p_lvot)}` : "";
+  const nl = ok ? r.beats.filter((b) => b.vote === "LVOT").length : 0, nr = ok ? r.beats.length - nl : 0;
+  $("vcount").textContent = ok ? `${nr} RVOT · ${nl} LVOT` : "–";
+  $("vr").style.width = `${ok ? (100 * nr) / (nr + nl) : 0}%`;
+  $("vl").style.width = `${ok ? (100 * nl) / (nr + nl) : 0}%`;
   $("beats").innerHTML = ok ? r.beats.map((b) => `<tr><td>${b.beat}</td><td class="num">${b.t.toFixed(2)}</td>
       <td class="num">${b.qrs_ms}</td><td class="num">${prob(b.p_lvot).replace("= ", "")}</td><td class="tag ${b.vote}">${b.vote}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No PVC beats</td></tr>`;
@@ -120,7 +124,10 @@ function plotCWT(rep) {
   const [t0, t1] = rep.cwt_ms, xt = (t) => L + ((t - t0) / (t1 - t0)) * (R - L);
   g.strokeStyle = "#ffffff"; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(xt(0), T); g.lineTo(xt(0), B); g.stroke(); g.setLineDash([]);
   g.fillStyle = col("--muted");
-  for (const t of [-300, -150, 0, 150, 300, 500]) g.fillText(t, xt(t) - 8, B + 13);
+  for (const t of [-300, -150, 0, 150, 300, 500]) {   // first and last tick aligned inside the plot
+    const w = g.measureText(t).width, px = t === t0 ? xt(t) : t === t1 ? xt(t) - w : xt(t) - w / 2;
+    g.fillText(t, px, B + 13);
+  }
   const fmin = rep.cwt_hz[0], fmax = rep.cwt_hz[nf - 1], yf = (f) => B - (Math.log(f / fmin) / Math.log(fmax / fmin)) * (B - T);
   for (const f of [2, 5, 10, 20, 60]) g.fillText(f, 22, yf(f) + 4);
 }
