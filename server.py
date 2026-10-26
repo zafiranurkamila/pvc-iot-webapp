@@ -79,6 +79,8 @@ def predict():
         return jsonify(analyse(f.read(), f.filename, record=Path(f.filename).stem))
     except ValueError as e:
         return jsonify(error=str(e)), 400
+    except Exception as e:  # a recording the pipeline cannot process must not crash the server
+        return jsonify(error=f"recording could not be processed: {type(e).__name__}"), 422
 
 
 @app.post("/api/device/upload")
@@ -90,6 +92,8 @@ def device_upload():
                                                     "request_ms", "record")})
     except ValueError as e:
         return jsonify(error=str(e)), 400
+    except Exception as e:
+        return jsonify(error=f"recording could not be processed: {type(e).__name__}"), 422
 
 
 @app.get("/api/history")
