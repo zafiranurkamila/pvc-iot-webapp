@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PVC Origin Monitor</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>PVC Origin Monitor</h1>
+    <p class="sub">IoT web system for RVOT / LVOT localization of premature ventricular contractions from the 12-lead ECG</p>
+  </div>
+  <div class="model" id="model">connecting…</div>
+</header>
+
+<main>
+  <section class="card input">
+    <h2>ECG recording</h2>
+    <div class="row">
+      <label class="field">Sample from device store
+        <select id="sample"><option value="">— choose —</option></select>
+      </label>
+      <span class="or">or</span>
+      <label class="field">Upload CSV (12 leads, 2000 Hz)
+        <input type="file" id="file" accept=".csv">
+      </label>
+      <button id="run">Analyse</button>
+    </div>
+    <p class="hint" id="msg"></p>
+  </section>
+
+  <section class="card result" id="result" hidden>
+    <div class="verdict">
+      <span class="label">Predicted origin</span>
+      <span class="origin" id="origin">–</span>
+      <span class="conf" id="conf"></span>
+    </div>
+    <dl class="facts">
+      <div><dt>Record</dt><dd id="record">–</dd></div>
+      <div><dt>PVC beats used</dt><dd id="nbeats">–</dd></div>
+      <div><dt>Recording</dt><dd id="dur">–</dd></div>
+      <div><dt>Processing time</dt><dd id="total">–</dd></div>
+    </dl>
+    <div class="bar" title="P(LVOT)"><span id="pbar"></span></div>
+    <div class="barlab"><span>RVOT</span><span id="plvot"></span><span>LVOT</span></div>
+  </section>
+
+  <section class="card wide" id="plotcard" hidden>
+    <h2>Lead II <small>red triangles: PVC beats used by the model · blue dots: other beats</small></h2>
+    <canvas id="ecg" height="220"></canvas>
+  </section>
+
+  <section class="card" id="beatcard" hidden>
+    <h2>Beat-level output</h2>
+    <table><thead><tr><th>Beat</th><th>Time (s)</th><th>QRS (ms)</th><th>P(LVOT)</th><th>Vote</th></tr></thead>
+      <tbody id="beats"></tbody></table>
+  </section>
+
+  <section class="card" id="timecard" hidden>
+    <h2>Processing stages</h2>
+    <table><tbody id="timing"></tbody></table>
+  </section>
+
+  <section class="card wide">
+    <h2>Device stream <small>recordings received from IoT acquisition nodes and uploads (refreshes every 3 s)</small></h2>
+    <table><thead><tr><th>Time</th><th>Device</th><th>Record</th><th>Result</th><th>Confidence</th><th>PVC beats</th><th>Server time</th></tr></thead>
+      <tbody id="history"><tr><td colspan="7" class="empty">No recordings yet</td></tr></tbody></table>
+  </section>
+</main>
+
+<footer>Research prototype for decision support; not validated for clinical use.</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>
