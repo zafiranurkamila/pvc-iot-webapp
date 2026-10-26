@@ -76,9 +76,11 @@
   </section>
 
   <section class="card" id="beatcard" hidden>
-    <h2>Beat-level output</h2>
-    <table><thead><tr><th>Beat</th><th>Time (s)</th><th>QRS (ms)</th><th>LVOT score</th><th>Vote</th></tr></thead>
-      <tbody id="beats"></tbody></table>
+    <div class="head"><h2>Beat-level output</h2><span class="note" id="beatnote"></span></div>
+    <div class="scroll">
+      <table><thead><tr><th>Beat</th><th>Time (s)</th><th>QRS (ms)</th><th>LVOT score</th><th>Vote</th></tr></thead>
+        <tbody id="beats"></tbody></table>
+    </div>
   </section>
 
   <section class="card" id="timecard" hidden>

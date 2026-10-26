@@ -59,6 +59,7 @@ function show(r) {
   $("plvot").textContent = ok ? `LVOT score ${prob(r.p_lvot)}` : "";
   const nl = ok ? r.beats.filter((b) => b.vote === "LVOT").length : 0, nr = ok ? r.beats.length - nl : 0;
   $("vcount").textContent = ok ? `${nr} RVOT · ${nl} LVOT` : "–";
+  $("beatnote").textContent = ok ? `${r.beats.length} PVC beats` : "";
   $("vr").style.width = `${ok ? (100 * nr) / (nr + nl) : 0}%`;
   $("vl").style.width = `${ok ? (100 * nl) / (nr + nl) : 0}%`;
   $("beats").innerHTML = ok ? r.beats.map((b) => `<tr><td>${b.beat}</td><td class="num">${b.t.toFixed(2)}</td>
