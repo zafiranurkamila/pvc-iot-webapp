@@ -34,6 +34,10 @@ async function run() {
   $("run").disabled = false;
 }
 
+// saturated scores are shown as bounds, not as certainty
+const pct = (c) => (c > 0.999 ? "> 99.9%" : `${(c * 100).toFixed(1)}%`);
+const prob = (p) => (p < 0.001 ? "< 0.001" : p > 0.999 ? "> 0.999" : `= ${p.toFixed(3)}`);
+
 function msg(t, err = false) { $("msg").textContent = t; $("msg").className = "hint" + (err ? " err" : ""); }
 
 function show(r) {
@@ -41,18 +45,18 @@ function show(r) {
   const ok = r.status === "ok";
   $("origin").textContent = ok ? r.prediction : "No PVC";
   $("origin").className = "origin " + (ok ? r.prediction : "");
-  $("conf").textContent = ok ? `confidence ${(r.confidence * 100).toFixed(1)}%` : "";
+  $("conf").textContent = ok ? `model score ${pct(r.confidence)} (uncalibrated)` : "";
   $("record").textContent = r.record;
   $("nbeats").textContent = ok ? r.n_pvc_beats : 0;
   $("dur").textContent = `${r.duration_s} s · ${r.r_peaks.length} beats`;
   $("total").textContent = `${(r.timing_ms.total ?? r.request_ms).toFixed(0)} ms`;
   $("pbar").style.left = ok ? `${r.p_lvot * 100}%` : "50%";
-  $("plvot").textContent = ok ? `P(LVOT) = ${r.p_lvot.toFixed(3)}` : "";
+  $("plvot").textContent = ok ? `P(LVOT) ${prob(r.p_lvot)}` : "";
   $("beats").innerHTML = ok ? r.beats.map((b) => `<tr><td>${b.beat}</td><td class="num">${b.t.toFixed(2)}</td>
-      <td class="num">${b.qrs_ms}</td><td class="num">${b.p_lvot.toFixed(3)}</td><td class="tag ${b.vote}">${b.vote}</td></tr>`).join("")
+      <td class="num">${b.qrs_ms}</td><td class="num">${prob(b.p_lvot).replace("= ", "")}</td><td class="tag ${b.vote}">${b.vote}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No PVC beats</td></tr>`;
-  $("timing").innerHTML = Object.entries(r.timing_ms).map(([k, v]) =>
-    `<tr><td>${STAGES[k] || k}</td><td class="num">${v.toFixed(1)} ms</td></tr>`).join("");
+  $("timing").innerHTML = Object.keys(STAGES).filter((k) => k in r.timing_ms).map((k) =>   // pipeline order
+    `<tr${k === "total" ? ' class="total"' : ""}><td>${STAGES[k]}</td><td class="num">${r.timing_ms[k].toFixed(1)} ms</td></tr>`).join("");
   plot(r);
   $("repcard").hidden = !ok;
   if (ok) {
@@ -151,7 +155,7 @@ async function refreshHistory() {
     if (!h.length) return;
     $("history").innerHTML = h.map((e) => `<tr><td>${e.time}</td><td>${e.device}</td><td>${e.record}</td>
       <td class="tag ${e.prediction || ""}">${e.prediction || "no PVC"}</td>
-      <td class="num">${e.confidence != null ? (e.confidence * 100).toFixed(1) + "%" : "–"}</td>
+      <td class="num">${e.confidence != null ? pct(e.confidence) : "–"}</td>
       <td class="num">${e.n_pvc_beats}</td><td class="num">${e.request_ms.toFixed(0)} ms</td></tr>`).join("");
   } catch { /* server offline: keep the last table */ }
 }

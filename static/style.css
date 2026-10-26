@@ -45,6 +45,7 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 th { color: var(--muted); font-weight: 600; font-size: 12px; }
 td.num { font-variant-numeric: tabular-nums; }
+tr.total td { font-weight: 700; border-bottom: 0; }
 .tag { font-weight: 700; } .tag.RVOT { color: var(--rvot); } .tag.LVOT { color: var(--lvot); }
 .empty { color: var(--muted); text-align: center; }
 footer { text-align: center; color: var(--muted); font-size: 12px; padding: 8px 0 24px; }
