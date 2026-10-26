@@ -18,7 +18,9 @@ SAMPLES = Path(__file__).resolve().parent / "samples"
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--server", default="http://localhost:5000")
+    # 127.0.0.1 rather than "localhost": on Windows "localhost" tries IPv6 first and adds ~2 s per request,
+    # because the Flask server listens on IPv4 (0.0.0.0) only
+    ap.add_argument("--server", default="http://127.0.0.1:5000")
     ap.add_argument("--device", default="ecg-node-01")
     ap.add_argument("--interval", type=float, default=3.0)
     args = ap.parse_args()
