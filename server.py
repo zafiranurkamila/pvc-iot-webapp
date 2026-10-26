@@ -27,6 +27,15 @@ localizer = PVCLocalizer()
 history = deque(maxlen=50)
 
 
+@app.after_request
+def cors(resp):
+    """Allow the dashboard to be hosted on another domain (e.g. Vercel) while the API runs here."""
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Device-Id, X-Record-Id"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return resp
+
+
 def analyse(data: bytes, source: str, device: str = "web-upload", record: str = "") -> dict:
     t0 = time.perf_counter()
     result = localizer.predict(localizer.read_csv(data))

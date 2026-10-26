@@ -4,65 +4,74 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PVC Origin Monitor</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="static/style.css">
 </head>
 <body>
 <header class="top">
-  <div>
+  <div class="brand">
     <h1>PVC Origin Monitor</h1>
-    <p class="sub">IoT web system for RVOT / LVOT localization of premature ventricular contractions from the 12-lead ECG</p>
+    <p>RVOT / LVOT localization of premature ventricular contractions from the 12-lead ECG</p>
   </div>
-  <div class="model" id="model">connecting…</div>
+  <div class="status"><span class="dot" id="dot"></span><span id="model">connecting…</span></div>
 </header>
 
 <main>
-  <section class="card input">
+  <section class="card source">
     <h2>ECG recording</h2>
-    <div class="row">
-      <label class="field">Sample from device store
-        <select id="sample"><option value="">— choose —</option></select>
-      </label>
-      <span class="or">or</span>
-      <label class="field">Upload CSV (12 leads, 2000 Hz)
-        <input type="file" id="file" accept=".csv">
-      </label>
-      <button id="run">Analyse</button>
-    </div>
+    <label class="field">Sample from device store
+      <select id="sample"><option value="">Choose a recording</option></select>
+    </label>
+    <div class="or"><span>or</span></div>
+    <label class="field">Upload CSV <small>12 leads · 2000 Hz</small>
+      <input type="file" id="file" accept=".csv">
+    </label>
+    <button id="run">Analyse recording</button>
     <p class="hint" id="msg"></p>
   </section>
 
-  <section class="card result" id="result" hidden>
-    <div class="verdict">
-      <span class="label">Predicted origin</span>
-      <span class="origin" id="origin">–</span>
-      <span class="conf" id="conf"></span>
+  <section class="card result">
+    <div id="placeholder" class="placeholder">
+      <h2>Localization result</h2>
+      <p>Select a recording and press <b>Analyse recording</b>. The server filters the ECG, extracts the PVC beats,
+        computes their PSD and CWT scalogram and classifies the origin.</p>
     </div>
-    <dl class="facts">
-      <div><dt>Record</dt><dd id="record">–</dd></div>
-      <div><dt>PVC beats used</dt><dd id="nbeats">–</dd></div>
-      <div><dt>Recording</dt><dd id="dur">–</dd></div>
-      <div><dt>Processing time</dt><dd id="total">–</dd></div>
-    </dl>
-    <div class="bar" title="Model score for LVOT (uncalibrated)"><span id="pbar"></span></div>
-    <div class="barlab"><span>RVOT</span><span id="plvot"></span><span>LVOT</span></div>
+    <div id="result" hidden>
+      <div class="verdict">
+        <div>
+          <span class="label">Predicted origin</span>
+          <span class="origin" id="origin">–</span>
+          <span class="full" id="fullname"></span>
+        </div>
+        <span class="score" id="conf"></span>
+      </div>
+      <div class="track"><span id="pbar"></span></div>
+      <div class="tracklab"><span>RVOT</span><span id="plvot"></span><span>LVOT</span></div>
+      <div class="tiles">
+        <div><span>Record</span><b id="record">–</b></div>
+        <div><span>PVC beats used</span><b id="nbeats">–</b></div>
+        <div><span>Recording</span><b id="dur">–</b></div>
+        <div><span>Processing time</span><b id="total">–</b></div>
+      </div>
+    </div>
   </section>
 
   <section class="card wide" id="plotcard" hidden>
-    <h2>Lead II <small>red triangles: PVC beats used by the model · blue dots: other beats</small></h2>
+    <div class="head"><h2>Lead II</h2>
+      <div class="legend"><span class="tri"></span>PVC beat used by the model<span class="circ"></span>other beat</div></div>
     <canvas id="ecg" height="220"></canvas>
   </section>
 
   <section class="card wide" id="repcard" hidden>
-    <h2>Model input representations <small id="replab">mean of the PVC beats</small></h2>
+    <div class="head"><h2>Model input representations</h2><span class="note" id="replab"></span></div>
     <div class="reps">
-      <figure><figcaption>Power spectral density (PSD branch, 1D CNN)</figcaption><canvas id="psd" height="200"></canvas></figure>
-      <figure><figcaption>CWT scalogram (wavelet branch, 2D CNN)</figcaption><canvas id="cwt" height="200"></canvas></figure>
+      <figure><figcaption>Power spectral density · PSD branch (1D CNN)</figcaption><canvas id="psd" height="210"></canvas></figure>
+      <figure><figcaption>CWT scalogram · wavelet branch (2D CNN)</figcaption><canvas id="cwt" height="210"></canvas></figure>
     </div>
   </section>
 
   <section class="card" id="beatcard" hidden>
     <h2>Beat-level output</h2>
-    <table><thead><tr><th>Beat</th><th>Time (s)</th><th>QRS (ms)</th><th>P(LVOT)</th><th>Vote</th></tr></thead>
+    <table><thead><tr><th>Beat</th><th>Time (s)</th><th>QRS (ms)</th><th>LVOT score</th><th>Vote</th></tr></thead>
       <tbody id="beats"></tbody></table>
   </section>
 
@@ -72,13 +81,14 @@
   </section>
 
   <section class="card wide">
-    <h2>Device stream <small>recordings received from IoT acquisition nodes and uploads (refreshes every 3 s)</small></h2>
-    <table><thead><tr><th>Time</th><th>Device</th><th>Record</th><th>Result</th><th>Confidence</th><th>PVC beats</th><th>Server time</th></tr></thead>
+    <div class="head"><h2>Device stream</h2><span class="note">recordings received from IoT acquisition nodes and uploads · refreshes every 3 s</span></div>
+    <table><thead><tr><th>Time</th><th>Device</th><th>Record</th><th>Result</th><th>Model score</th><th>PVC beats</th><th>Server time</th></tr></thead>
       <tbody id="history"><tr><td colspan="7" class="empty">No recordings yet</td></tr></tbody></table>
   </section>
 </main>
 
-<footer>Research prototype for decision support; not validated for clinical use.</footer>
-<script src="/static/app.js"></script>
+<footer>Research prototype for decision support · not validated for clinical use</footer>
+<script src="static/config.js"></script>
+<script src="static/app.js"></script>
 </body>
 </html>

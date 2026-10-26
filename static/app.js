@@ -1,13 +1,16 @@
 const $ = (id) => document.getElementById(id);
+const API = (window.PVC_API_BASE || "").replace(/\/$/, "");  // "" = same server; set in config.js when the UI is hosted elsewhere
 const STAGES = { filtering: "Filtering (0.5–40 Hz, 50 Hz notch)", beat_extraction: "R-peak detection and PVC extraction",
   normalization: "Z-score normalization", psd: "PSD (Welch)", cwt: "CWT scalogram", cnn_inference: "HDR-CNN inference",
   total: "Total pipeline" };
+const FULL = { RVOT: "right ventricular outflow tract", LVOT: "left ventricular outflow tract" };
 
 async function init() {
   try {
-    const s = await (await fetch("/api/status")).json();
-    $("model").textContent = `Model ${s.model} · ${s.features.join(" + ").toUpperCase()} · ${s.parameters.toLocaleString()} parameters`;
-    const samples = await (await fetch("/api/samples")).json();
+    const s = await (await fetch(`${API}/api/status`)).json();
+    $("model").textContent = `${s.model} · ${s.features.join(" + ").toUpperCase()} · ${s.parameters.toLocaleString("en")} parameters`;
+    $("dot").classList.add("on");
+    const samples = await (await fetch(`${API}/api/samples`)).json();
     for (const n of samples) $("sample").add(new Option(n.replace(".csv", ""), n));
   } catch { $("model").textContent = "server not reachable"; }
   $("run").onclick = run;
@@ -22,8 +25,8 @@ async function run() {
   msg("Processing…");
   try {
     let res;
-    if (file) { const fd = new FormData(); fd.append("file", file); res = await fetch("/api/predict", { method: "POST", body: fd }); }
-    else res = await fetch(`/api/predict?sample=${encodeURIComponent(sample)}`, { method: "POST" });
+    if (file) { const fd = new FormData(); fd.append("file", file); res = await fetch(`${API}/api/predict`, { method: "POST", body: fd }); }
+    else res = await fetch(`${API}/api/predict?sample=${encodeURIComponent(sample)}`, { method: "POST" });
     const r = await res.json();
     if (!res.ok) throw new Error(r.error || res.statusText);
     show(r);
@@ -41,17 +44,19 @@ const prob = (p) => (p < 0.001 ? "< 0.001" : p > 0.999 ? "> 0.999" : `= ${p.toFi
 function msg(t, err = false) { $("msg").textContent = t; $("msg").className = "hint" + (err ? " err" : ""); }
 
 function show(r) {
+  $("placeholder").hidden = true;
   for (const id of ["result", "plotcard", "beatcard", "timecard"]) $(id).hidden = false;
   const ok = r.status === "ok";
   $("origin").textContent = ok ? r.prediction : "No PVC";
   $("origin").className = "origin " + (ok ? r.prediction : "");
-  $("conf").textContent = ok ? `model score ${pct(r.confidence)} (uncalibrated)` : "";
+  $("fullname").textContent = ok ? FULL[r.prediction] : "no PVC beat detected";
+  $("conf").textContent = ok ? `model score ${pct(r.confidence)} · uncalibrated` : "";
   $("record").textContent = r.record;
   $("nbeats").textContent = ok ? r.n_pvc_beats : 0;
   $("dur").textContent = `${r.duration_s} s · ${r.r_peaks.length} beats`;
   $("total").textContent = `${(r.timing_ms.total ?? r.request_ms).toFixed(0)} ms`;
   $("pbar").style.left = ok ? `${r.p_lvot * 100}%` : "50%";
-  $("plvot").textContent = ok ? `P(LVOT) ${prob(r.p_lvot)}` : "";
+  $("plvot").textContent = ok ? `LVOT score ${prob(r.p_lvot)}` : "";
   $("beats").innerHTML = ok ? r.beats.map((b) => `<tr><td>${b.beat}</td><td class="num">${b.t.toFixed(2)}</td>
       <td class="num">${b.qrs_ms}</td><td class="num">${prob(b.p_lvot).replace("= ", "")}</td><td class="tag ${b.vote}">${b.vote}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No PVC beats</td></tr>`;
@@ -60,7 +65,7 @@ function show(r) {
   plot(r);
   $("repcard").hidden = !ok;
   if (ok) {
-    $("replab").textContent = `lead ${r.representations.lead}, mean of the ${r.n_pvc_beats} PVC beats`;
+    $("replab").textContent = `lead ${r.representations.lead} · mean of the ${r.n_pvc_beats} PVC beats`;
     plotPSD(r.representations);
     plotCWT(r.representations);
   }
@@ -151,7 +156,7 @@ function plot(r) {
 
 async function refreshHistory() {
   try {
-    const h = await (await fetch("/api/history")).json();
+    const h = await (await fetch(`${API}/api/history`)).json();
     if (!h.length) return;
     $("history").innerHTML = h.map((e) => `<tr><td>${e.time}</td><td>${e.device}</td><td>${e.record}</td>
       <td class="tag ${e.prediction || ""}">${e.prediction || "no PVC"}</td>
