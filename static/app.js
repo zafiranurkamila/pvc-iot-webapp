@@ -72,7 +72,7 @@ function show(r) {
   if (ok) {
     $("replab").textContent = `lead ${r.representations.lead} · mean of the ${r.n_pvc_beats} PVC beats`;
     plotPSD(r.representations);
-    plotCWT(r.representations);
+    if (r.representations.cwt) plotCWT(r.representations);  // absent for a PSD-only model
   }
 }
 

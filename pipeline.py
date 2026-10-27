@@ -105,14 +105,18 @@ class PVCLocalizer:
         t0 = time.perf_counter()
         psd = np.stack([flatten_psd_features(b) for b in beats])
         t["psd"] = time.perf_counter() - t0
-        t0 = time.perf_counter()
-        cwt = np.stack([extract_cwt_scalogram(b) for b in beats])
-        t["cwt"] = time.perf_counter() - t0
+        cwt = None
+        if "wavelet" in self.features:  # the PSD-only model skips the CWT stage
+            t0 = time.perf_counter()
+            cwt = np.stack([extract_cwt_scalogram(b) for b in beats])
+            t["cwt"] = time.perf_counter() - t0
 
         t0 = time.perf_counter()
+        inputs = {"psd": torch.tensor(psd, dtype=torch.float32)}
+        if cwt is not None:
+            inputs["wavelet"] = torch.tensor(cwt, dtype=torch.float32)
         with torch.no_grad():
-            logits = self.model({"psd": torch.tensor(psd, dtype=torch.float32),
-                                 "wavelet": torch.tensor(cwt, dtype=torch.float32)}).double()
+            logits = self.model(inputs).double()
         t["cnn_inference"] = time.perf_counter() - t0
         margin = (logits[:, 1] - logits[:, 0]).numpy()
         prob = torch.softmax(logits, dim=1)[:, 1].numpy()
@@ -128,10 +132,11 @@ class PVCLocalizer:
             "lead": SHOW_LEAD,
             "psd_hz": np.round((edges[:-1] + edges[1:]) / 2, 2).tolist(),
             "psd_log10": np.round(psd.reshape(len(psd), len(config.LEADS), n_bins)[:, v1].mean(0), 3).tolist(),
-            "cwt_hz": np.round(np.geomspace(config.CWT_FMIN_HZ, config.FEATURE_FMAX_HZ, cwt.shape[2]), 2).tolist(),
-            "cwt_ms": [-config.BEAT_PRE_MS, config.BEAT_POST_MS],
-            "cwt": np.round(cwt[:, v1].mean(0), 3).tolist(),
         }
+        if cwt is not None:
+            result["representations"].update(
+                cwt_hz=np.round(np.geomspace(config.CWT_FMIN_HZ, config.FEATURE_FMAX_HZ, cwt.shape[2]), 2).tolist(),
+                cwt_ms=[-config.BEAT_PRE_MS, config.BEAT_POST_MS], cwt=np.round(cwt[:, v1].mean(0), 3).tolist())
         result.update(
             status="ok", prediction=label, p_lvot=round(p_lvot, 4),
             confidence=round(p_lvot if label == "LVOT" else 1 - p_lvot, 4),
