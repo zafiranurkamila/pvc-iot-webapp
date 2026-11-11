@@ -46,13 +46,28 @@ FS = config.SAMPLING_RATE_HZ
 REF = config.LEADS.index(config.RPEAK_DETECTION_LEAD)
 LABELS = ("RVOT", "LVOT")
 SHOW_LEAD = "V1"  # lead shown in the representation view of the dashboard
+# Below this gap between the narrow and the wide QRS-width group, the PVC/normal split is uncertain (3 of the 329
+# development patients); the result is still returned, with a warning to inspect the extracted beats.
+MIN_WIDTH_GAP_MS = 20.0
+# CWT implementation: "pywt" (per beat, as in the paper) or "batched" (same transform in one batched FFT,
+# pvc_localization.features.wavelet_fast; on the GPU in single precision when CUDA is available, else on the CPU).
+CWT_MODE = os.environ.get("PVC_CWT", "pywt")
 torch.set_num_threads(max(1, (os.cpu_count() or 2) // 2))
 
 
 class PVCLocalizer:
     """Loads the trained model once and runs the full pipeline on one recording."""
 
-    def __init__(self, model_path: Path = MODEL_PATH):
+    def __init__(self, model_path: Path = MODEL_PATH, cwt: str = CWT_MODE, cwt_device: str = None):
+        self.cwt_mode = cwt
+        self.fast_cwt = None
+        if cwt == "batched":
+            from pvc_localization.features.wavelet_fast import FastCWT
+            dev = cwt_device or ("cuda" if torch.cuda.is_available() else "cpu")
+            self.fast_cwt = FastCWT(device=dev, dtype=torch.float32 if dev == "cuda" else torch.float64)
+            self.cwt_device = dev
+        elif cwt != "pywt":
+            raise ValueError(f"unknown CWT mode {cwt!r}")
         ckpt = torch.load(model_path, map_location="cpu", weights_only=False)
         hp = ckpt["hyperparameters"]
         self.features = ckpt["features"]
@@ -88,8 +103,11 @@ class PVCLocalizer:
         pvc_idx = np.where(wide & kept)[0]
         t["beat_extraction"] = time.perf_counter() - t0
 
+        gap = float(np.diff(np.sort(widths)).max()) if len(widths) >= 2 else None
         result = {
             "model": self.model_name, "sampling_rate_hz": FS, "duration_s": round(len(ecg) / FS, 2),
+            "cwt_mode": self.cwt_mode if self.fast_cwt is None else f"batched ({self.cwt_device})",
+            "width_gap_ms": None if gap is None else round(gap, 1),
             "r_peaks": [{"t": round(float(p) / FS, 4), "qrs_ms": round(float(w), 1), "pvc": bool(wide[i])}
                         for i, (p, w) in enumerate(zip(peaks, widths))],
             "lead_ii": downsample(sig, FS, 250),
@@ -108,7 +126,10 @@ class PVCLocalizer:
         cwt = None
         if "wavelet" in self.features:  # the PSD-only model skips the CWT stage
             t0 = time.perf_counter()
-            cwt = np.stack([extract_cwt_scalogram(b) for b in beats])
+            if self.fast_cwt is None:
+                cwt = np.stack([extract_cwt_scalogram(b) for b in beats])
+            else:  # .cpu() waits for the GPU, so the time includes the transfer back
+                cwt = self.fast_cwt(beats).cpu().numpy()
             t["cwt"] = time.perf_counter() - t0
 
         t0 = time.perf_counter()
@@ -146,6 +167,9 @@ class PVCLocalizer:
                    for i, pr, m in zip(pvc_idx, prob, margin)],
             timing_ms={k: round(v * 1000, 1) for k, v in t.items()},
         )
+        if gap is not None and gap < MIN_WIDTH_GAP_MS:
+            result["warning"] = (f"Narrow and wide QRS widths are close (gap {gap:.1f} ms < {MIN_WIDTH_GAP_MS:.0f} ms); "
+                                 "the PVC extraction may be unreliable, inspect the marked beats.")
         result["timing_ms"]["total"] = round(sum(t.values()) * 1000, 1)
         return result
 

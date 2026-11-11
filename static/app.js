@@ -30,7 +30,7 @@ async function run() {
     const r = await res.json();
     if (!res.ok) throw new Error(r.error || res.statusText);
     show(r);
-    msg(r.status === "ok" ? "" : r.message, r.status !== "ok");
+    msg(r.status === "ok" ? (r.warning || "") : r.message, r.status !== "ok" || !!r.warning);
     $("file").value = "";
     refreshHistory();
   } catch (e) { msg(`Error: ${e.message}`, true); }
